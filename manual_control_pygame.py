@@ -1,12 +1,8 @@
-from djitellopy import tello
-import cv
+from djitellopy import Tello
+import cv2
 import pygame
 import time
 import numpy as np
-
-# prepare the drone
-drone = tello.Tello()
-drone.connect()
 
 SPEED = 60
 FPS = 120
@@ -80,8 +76,8 @@ class FrontEnd(object):
             
             frame = frame_read.frame
             
-            text = f"Battery: {self.drone.get_battery()}%"
-            cv2.putText(frame, text, (5, 720, -5),
+            text = f"Battery: {self.drone.get_battery()}%"            
+            cv2.putText(frame, text, (5, 720 - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = np.rot90(frame)
@@ -137,7 +133,7 @@ class FrontEnd(object):
         elif key == pygame.K_a or key == pygame.K_d:
             self.yaw_velocity = 0
         elif key == pygame.K_t:
-            self.drone.take_off()
+            self.drone.takeoff()
             self.send_rc_control = True
         elif key == pygame.K_l:
             not self.drone.land()
@@ -149,8 +145,10 @@ class FrontEnd(object):
         """
         
         if self.send_rc_control:
-            self.drone.send_rc_control(self.left_right_velocity, self.for_back_velocity,
-                                       self.up_down_velocity, self.yaw_velocity)
+            self.drone.send_rc_control(self.left_right_velocity,
+                                       self.for_back_velocity,
+                                       self.up_down_velocity,
+                                       self.yaw_velocity)
             
     
 def main():
