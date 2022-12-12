@@ -3,11 +3,12 @@ import cv2
 import pygame
 import time
 import numpy as np
+import sys
 
 SPEED = 60
 FPS = 120
 
-class FrontEnd(object):
+class Drone():
     """
     Maintains the display and moves Tello in response to keys
     Press esc key to quit
@@ -25,8 +26,7 @@ class FrontEnd(object):
         
         # create pygame window
         pygame.display.set_caption("Tello video stream")
-        self.screen = pygame.display.set_mode((960,720))
-        
+        self.screen = pygame.display.set_mode((480,360))        
         # init Tello object
         self.drone = Tello()
         
@@ -36,6 +36,7 @@ class FrontEnd(object):
         self.up_down_velocity = 0
         self.yaw_velocity = 0
         self.speed = 10
+        self.img = None
         
         self.send_rc_control = False
         
@@ -74,10 +75,12 @@ class FrontEnd(object):
             
             self.screen.fill((0, 0, 0))
             
-            frame = frame_read.frame
+            self.img = frame_read.frame
+            
+            frame = cv2.resize(self.img, (480,360))
             
             text = f"Battery: {self.drone.get_battery()}%"            
-            cv2.putText(frame, text, (5, 720 - 5),
+            cv2.putText(frame, text, (5, 360 - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame = np.rot90(frame)
@@ -90,6 +93,8 @@ class FrontEnd(object):
             time.sleep(1 / FPS)
             
         self.drone.end()
+        pygame.quit()
+        sys.exit()
         
     
     def key_down(self, key):
@@ -124,13 +129,13 @@ class FrontEnd(object):
             key: pygame key
         """
         
-        if key == pygame.K_UP or key == pygame.K_DOWN:
+        if key in [pygame.K_UP, pygame.K_DOWN]:
             self.for_back_velocity = 0
-        elif key == pygame.K_LEFT or key == pygame.K_RIGHT:
+        elif key in [pygame.K_LEFT, pygame.K_RIGHT]:
             self.left_right_velocity = 0
-        elif key == pygame.K_w or key == pygame.K_s:
+        elif key in [pygame.K_w, pygame.K_s]:
             self.up_down_velocity = 0
-        elif key == pygame.K_a or key == pygame.K_d:
+        elif key in [pygame.K_a, pygame.K_d]:
             self.yaw_velocity = 0
         elif key == pygame.K_t:
             self.drone.takeoff()
@@ -138,6 +143,8 @@ class FrontEnd(object):
         elif key == pygame.K_l:
             not self.drone.land()
             self.send_rc_control = False
+        elif key == pygame.K_SPACE:
+            cv2.imwrite(f"captures\\{time.time()}.jpg", self.img)
             
     def update(self):
         """
@@ -152,9 +159,9 @@ class FrontEnd(object):
             
     
 def main():
-    frontend = FrontEnd()
+    drone = Drone()
     
-    frontend.run()
+    drone.run()
     
     
 if __name__ == "__main__":
