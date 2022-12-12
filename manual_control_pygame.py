@@ -18,19 +18,21 @@ class Drone():
         - Arrow keys: Forward, backwards, left and right
         - A and D: counter clockwise and clockwise roations (yaw)
         - W and S: up and down
+        - SPACE: capture image
     """
     
     def __init__(self):
-        # init pygame
+        # initalise pygame
         pygame.init()
         
         # create pygame window
-        pygame.display.set_caption("Tello video stream")
+        pygame.display.set_caption("Drone video stream")
         self.screen = pygame.display.set_mode((480,360))        
+        
         # init Tello object
         self.drone = Tello()
         
-        # drone velocities between -100 and 100
+        # set initial drone velocities
         self.for_back_velocity = 0
         self.left_right_velocity = 0
         self.up_down_velocity = 0
@@ -38,60 +40,90 @@ class Drone():
         self.speed = 10
         self.img = None
         
+        # disable drone control
         self.send_rc_control = False
         
-        # create update timer
+        # create an update timer
         pygame.time.set_timer(pygame.USEREVENT + 1, 1000 // FPS)
         
     def run(self):
+        """
+        The main loop for the drone. This will run as long until exited.
+        """
         
+        # intialise the drone's settings
         self.drone.connect()
         self.drone.set_speed(self.speed)
-        
         self.drone.streamoff()
         self.drone.streamon()
         
+        # gets the stream from the drone
         frame_read = self.drone.get_frame_read()
         
         running = True
         
+        # main loop
         while running:
-            
+            # ---- Dealing with Events
+            # iterates over all the registered PyGame events since last loop interval
             for event in pygame.event.get():
+                # if event is update timer finish, run update
                 if event.type == pygame.USEREVENT + 1:
                     self.update()
+                # if the event user clicking on PyGame window X then exit loop
                 elif event.type == pygame.QUIT:
                     running = False
+                # if the event is a pressing a keydown
                 elif event.type == pygame.KEYDOWN:
+                    # if its the escape key then exit loop
                     if event.key == pygame.K_ESCAPE:
                         running = False
+                    # if it's any other key send they key details to the key_down function
                     else:
                         self.key_down(event.key)
+                # if the event is the release of a key send details to kep_up function
                 elif event.type == pygame.KEYUP:
                     self.key_up(event.key)
-                    
+            
+            # if the drone is out of range (no feed) break loop                    
             if frame_read.stopped:
                 break
             
+            # ---- Updating Display
+            # set background to black
             self.screen.fill((0, 0, 0))
             
+            # capture current frame from the stream
             self.img = frame_read.frame
             
+            # --- process image for display on PyGame           
+            
+            # resize to make stream smoother
             frame = cv2.resize(self.img, (480,360))
             
-            text = f"Battery: {self.drone.get_battery()}%"            
+            # add current battery level to image
+            text = f"Battery: {self.drone.get_battery()}%"
             cv2.putText(frame, text, (5, 360 - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)            
+            
+            # convert OpenCV colourspace (BGR) to PyGame colourspace (RGB)
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # rotate frame to correct orientation
             frame = np.rot90(frame)
+            
+            # flip frame horizontally for correct orientation
             frame = np.flipud(frame)
             
+            # add image to PyGame window
             frame = pygame.surfarray.make_surface(frame)
             self.screen.blit(frame, (0, 0))
             pygame.display.update()
             
+            # pause for next image (prevents lag)
             time.sleep(1 / FPS)
-            
+        
+        # drone shutdown proceedure    
         self.drone.end()
         pygame.quit()
         sys.exit()
